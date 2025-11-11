@@ -78,3 +78,22 @@ class LogoutView(APIView):
     def post(self, request):
         logout(request)
         return Response({"message": "logout success!"}, status=status.HTTP_200_OK)
+    
+
+class TeamMemberCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = TeamMemberSerializer(data=request.data)
+
+        if serializer.is_valid(raise_exception=True):
+            team_member = serializer.save()
+            return Response(TeamMemberSerializer(team_member).data, status=status.HTTP_201_CREATED)
+
+class TeamMemberListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        team_members = TeamMember.objects.all()
+        serializer = TeamMemberSerializer(team_members, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
