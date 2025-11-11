@@ -42,6 +42,8 @@ DJANGO_APPS = [
 
 PROJECT_APPS = [
     'accounts',
+    'memos',
+    'portfolios',
 ]
 
 THIRD_PARTY_APPS = [
