@@ -33,6 +33,13 @@ class ProjectCreateView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    # 로그인한 사용자의 프로젝트 리스트 조회
+    def get(self, request):
+        user = request.user
+        memos = Project.objects.filter(teammember__user=user).order_by("-created_at")
+        serializer = ProjectSerializer(memos, many=True, context={"request": request})
+        return Response({"results": serializer.data}, status=status.HTTP_200_OK)
+    
 # 조회, 수정, 삭제를 위한 뷰
 class ProjectDetailView(APIView):
     # 1. 인증된 사용자인지 확인

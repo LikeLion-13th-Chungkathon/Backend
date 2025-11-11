@@ -23,3 +23,8 @@ class Tagging(BaseModel):
     def clean(self):
         if self.offset_start > self.offset_end:
             raise ValidationError("offset_start는 offset_end보다 클 수 없습니다.")
+        
+    def save(self, *args, **kwargs):
+        # full_clean()으로 clean() 포함 모든 validator 실행
+        self.full_clean()
+        super().save(*args, **kwargs)

@@ -9,6 +9,7 @@ from .serializers import TaggingSerializer
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
+from collections import defaultdict
 
 # 한 메모에 대한 태깅
 class MemoTaggingView(APIView):
@@ -34,7 +35,7 @@ class MemoTaggingView(APIView):
         memo = get_object_or_404(Memo, id=memo_id)
         if request.user != memo.user:
             return Response({"detail": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
-        taggings = Tagging.objects.filter(memo=memo).order_by("created_at")
+        taggings = Tagging.objects.filter(memo=memo).order_by("-created_at")
         serializer = TaggingSerializer(taggings, many=True, context={"request": request})
         return Response({"results": serializer.data}, status=status.HTTP_200_OK)
 
@@ -49,7 +50,7 @@ class ProjectTaggingView(APIView):
             Tagging.objects
             .filter(user=request.user, memo__project=project)
             .select_related("tag_style", "memo")
-            .order_by("created_at")
+            .order_by("-created_at")
         )
 
         # tag_style 기준으로 그룹핑
