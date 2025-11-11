@@ -43,6 +43,7 @@ DJANGO_APPS = [
 PROJECT_APPS = [
     'accounts',
     'memos',
+    'taggings',
     'portfolios',
 ]
 
@@ -93,28 +94,24 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DB_PW = get_secret("DB_PW")
 
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",  # 프로젝트 폴더 안에 자동으로 생성됨
+    }
+}
+
+# # 원격 연결용
 # DATABASES = {
 # 	'default': {
 # 		'ENGINE': 'django.db.backends.mysql',
-# 		'NAME': 'loglion',
-# 		'USER': 'root', # root로 접속하여 DB를 만들었다면 'root'
+# 		'NAME': "loglion",
+# 		'USER': "admin", # aws에서 만든 사용자명
 # 		'PASSWORD': DB_PW, # 비밀번호는 secrets.json에 저장
-# 		'HOST': 'localhost',
-# 		'PORT': '3306',
+# 		'HOST': "127.0.0.1",
+# 		'PORT': '3307', # 터널에서 연결할 로컬 포트
 # 	}
 # }
-
-# 원격 연결용
-DATABASES = {
-	'default': {
-		'ENGINE': 'django.db.backends.mysql',
-		'NAME': "loglion",
-		'USER': "admin", # aws에서 만든 사용자명
-		'PASSWORD': DB_PW, # 비밀번호는 secrets.json에 저장
-		'HOST': "127.0.0.1",
-		'PORT': '3307', # 터널에서 연결할 로컬 포트
-	}
-}
 
 
 # Password validation

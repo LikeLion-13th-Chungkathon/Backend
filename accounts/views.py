@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializers import *
 from rest_framework import status
+from drf_yasg.utils import swagger_auto_schema
 
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import logout
@@ -10,6 +11,10 @@ from django.contrib.auth import logout
 from rest_framework import status
 
 class RegisterView(APIView):
+    @swagger_auto_schema(
+        request_body=RegisterSerializer,
+        responses={201: "register success"}
+    )
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
 
@@ -39,6 +44,10 @@ class RegisterView(APIView):
         
 
 class AuthView(APIView):
+    @swagger_auto_schema(
+        request_body=AuthSerializer,
+        responses={200: "login success"}
+    )
     def post(self, request):
         serializer = AuthSerializer(data=request.data)
         
@@ -75,6 +84,9 @@ class AuthView(APIView):
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        responses={200: "logout success"}
+    )
     def post(self, request):
         logout(request)
         return Response({"message": "logout success!"}, status=status.HTTP_200_OK)
@@ -83,6 +95,10 @@ class LogoutView(APIView):
 class TeamMemberCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        request_body=TeamMemberSerializer,
+        responses={201: "team member created"}
+    )
     def post(self, request):
         serializer = TeamMemberSerializer(data=request.data)
 

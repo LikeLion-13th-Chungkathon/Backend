@@ -1,11 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializers import *
-from .models import Project
+from .models import Project, TagStyle
 from rest_framework import status
-
+from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, BasePermission
 from django.http import Http404
+from drf_yasg.utils import swagger_auto_schema
 
 class IsProjectOwner(BasePermission):
     """
@@ -18,6 +19,10 @@ class IsProjectOwner(BasePermission):
 class ProjectCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        request_body=ProjectCreateSerializer,
+        responses={201: "project created"}
+    )
     def post(self, request):
         serializer = ProjectCreateSerializer(data=request.data)
         if serializer.is_valid():
@@ -54,6 +59,10 @@ class ProjectDetailView(APIView):
         return Response(serializer.data)
 
     # --- 수정 (PUT: 전체 수정) ---
+    @swagger_auto_schema(
+        request_body=ProjectSerializer,
+        responses={200: "project all updated"}
+    )
     def put(self, request, pk):
         project = self.get_object(pk)
         # 수정 시에는 ProjectSerializer 사용
@@ -64,6 +73,10 @@ class ProjectDetailView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     # --- 수정 (PATCH: 부분 수정) ---
+    @swagger_auto_schema(
+        request_body=ProjectSerializer,
+        responses={200: "project part updated"}
+    )
     def patch(self, request, pk):
         project = self.get_object(pk)
         # partial=True 옵션으로 부분 수정 허용
@@ -78,3 +91,40 @@ class ProjectDetailView(APIView):
         project = self.get_object(pk)
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class TagStyleCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # 태그 스타일 생성
+    @swagger_auto_schema(
+        request_body=TagStyleSerializer,
+        responses={201: "tag created"}
+    )
+    def post(self, request, pk):
+        project = get_object_or_404(Project, id=pk)
+
+        if project.owner != request.user:
+            return Response({"detail": "팀장만 태그 스타일을 생성할 수 있습니다."},
+                            status=status.HTTP_403_FORBIDDEN)
+    
+        serializer = TagStyleSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(project=project)
+            return Response({"results": serializer.data}, status=status.HTTP_201_CREATED)
+        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+class TagStyleDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # 태그 스타일 삭제
+    def delete(self, request, tagstyle_id):
+        tag_style = get_object_or_404(TagStyle, id=tagstyle_id)
+        project = tag_style.project
+
+        if project.owner != request.user:
+            return Response({"detail": "팀장만 태그 스타일을 삭제할 수 있습니다."},
+                            status=status.HTTP_403_FORBIDDEN)
+    
+        tag_style.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    

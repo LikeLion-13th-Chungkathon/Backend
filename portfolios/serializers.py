@@ -42,3 +42,10 @@ class ProjectSerializer(serializers.ModelSerializer):
         # 중요: 수정(PUT, PATCH) 요청 시, 아래 필드들은
         # '읽기 전용'으로 설정하여 수정되지 않도록 합니다.
         read_only_fields = ['id', 'owner', 'invite_code', 'created_at']
+
+
+class TagStyleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TagStyle
+        fields = ["id", "project", "tag_detail", "tag_color"]
+        read_only_fields = ["id", "project"]
