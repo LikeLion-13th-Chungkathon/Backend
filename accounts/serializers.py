@@ -90,3 +90,8 @@ class AuthSerializer(serializers.ModelSerializer):
         }
 
         return data
+    
+class TeamMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeamMember
+        fields = ['user', 'project', 'role', 'joined_at']
