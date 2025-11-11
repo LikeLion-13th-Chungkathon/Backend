@@ -6,7 +6,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 # 회원가입용 시리얼라이저
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(required=True)
-    username = serializers.CharField(required=True)
+    # 클라이언트 레벨에서 username 길이 제한을 강제합니다 (예: 30자)
+    username = serializers.CharField(required=True, max_length=30)
     email = serializers.CharField(required=True)
 
     class Meta:
@@ -34,12 +35,22 @@ class RegisterSerializer(serializers.ModelSerializer):
 
          # 이메일 형식이 맞는지 검사
         if not "@" in value:
-            raise serializers.ValidationError("Invalid email format")
-        
+            raise serializers.ValidationError("유효하지 않은 이메일 형식입니다.")
+
         # 이메일 중복 여부 검사
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Email already exists.")
-        
+            raise serializers.ValidationError("이메일이 이미 존재합니다.")
+
+        return value
+
+    def validate_username(self, value):
+        if len(value) > 10:
+            raise serializers.ValidationError("사용자 이름은 10자 이내여야 합니다.")
+
+        # 중복 검사
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("사용자 이름이 이미 존재합니다.")
+
         return value
     
 class AuthSerializer(serializers.ModelSerializer):
