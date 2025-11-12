@@ -7,6 +7,7 @@ from .serializers import MemoSerializer
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
+from datetime import datetime
 
 class UserMemoListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -23,10 +24,27 @@ class UserMemoListView(APIView):
             return Response({"results": serializer.data}, status=status.HTTP_201_CREATED)
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     
-    # 로그인한 사용자의 메모 리스트 조회
+    # 로그인한 사용자의 특정 프로젝트 메모 리스트를 날짜별로 조회
     def get(self, request):
         user = request.user
-        memos = Memo.objects.filter(user=user).order_by("-created_at")
+        project_id = request.query_params.get("project_id")
+        date_str = request.query_params.get("date")  # "2025-11-12"
+
+        memos = Memo.objects.filter(user=user)
+
+        # 프로젝트 기준 필터링
+        if project_id:
+            memos = memos.filter(project_id=project_id)
+
+        # 날짜 기준 필터링
+        if date_str:
+            try:
+                date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                memos = memos.filter(created_at__date=date)
+            except ValueError:
+                return Response({"error": "Invalid date format (YYYY-MM-DD expected)"}, status=status.HTTP_400_BAD_REQUEST)
+
+        memos = memos.order_by("-created_at")
         serializer = MemoSerializer(memos, many=True, context={"request": request})
         return Response({"results": serializer.data}, status=status.HTTP_200_OK)
 

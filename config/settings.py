@@ -183,3 +183,6 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': False,
     'TOKEN_USER_CLASS': 'accounts.User',
 }
+
+TIME_ZONE = "Asia/Seoul"
+USE_TZ = True
