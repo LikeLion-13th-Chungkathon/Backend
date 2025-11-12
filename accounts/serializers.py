@@ -69,7 +69,7 @@ class AuthSerializer(serializers.ModelSerializer):
         password = data.get('password', None)
 		    
 		# username으로 사용자 찾는 모델 함수
-        user = User.get_user_by_username(username=username)
+        user = User.objects.filter(username=username).first()
         
         # 존재하는 회원인지 확인
         if user is None:

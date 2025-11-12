@@ -5,8 +5,8 @@ import uuid  # 초대 코드 생성을 위해 uuid 모듈 추가
 class ProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ['project_name', 'date_start', 'date_end']
-        read_only_fields = ['owner', 'invite_code']
+        fields = ['id', 'project_name', 'date_start', 'date_end']
+        read_only_fields = ['id', 'owner', 'invite_code']
 
     def create(self, validated_data):
         """
@@ -42,3 +42,10 @@ class ProjectSerializer(serializers.ModelSerializer):
         # 중요: 수정(PUT, PATCH) 요청 시, 아래 필드들은
         # '읽기 전용'으로 설정하여 수정되지 않도록 합니다.
         read_only_fields = ['id', 'owner', 'invite_code', 'created_at']
+
+
+class TagStyleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TagStyle
+        fields = ["id", "project", "tag_detail", "tag_color"]
+        read_only_fields = ["id", "project"]
