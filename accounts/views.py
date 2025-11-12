@@ -101,10 +101,17 @@ class TeamMemberCreateView(APIView):
     )
     def post(self, request):
         serializer = TeamMemberSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if serializer.is_valid(raise_exception=True):
+        try:
             team_member = serializer.save()
-            return Response(TeamMemberSerializer(team_member).data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            # 모델에서 발생한 ValidationError를 400으로 반환
+            return Response(
+                {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return Response(TeamMemberSerializer(team_member).data, status=status.HTTP_201_CREATED)
 
 class TeamMemberListView(APIView):
     permission_classes = [IsAuthenticated]
