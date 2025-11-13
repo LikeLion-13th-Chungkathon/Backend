@@ -174,6 +174,10 @@ CORS_ALLOWED_ORIGINS = [
     "https://thelogguys.p-e.kr"
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://thelogguys.p-e.kr',
+    'http://thelogguys.p-e.kr',
+]
 
 import pymysql
 pymysql.install_as_MySQLdb()
