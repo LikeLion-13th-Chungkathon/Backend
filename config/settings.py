@@ -53,6 +53,12 @@ THIRD_PARTY_APPS = [
     "rest_framework",
     'drf_yasg',
     'storages',
+
+    # 'oauth2_provider',
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",   
 ]
 
 
@@ -67,6 +73,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "allauth.account.middleware.AccountMiddleware",  # allauth 미들웨어
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -138,7 +145,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "Asia/Seoul"
 
 USE_I18N = True
 
@@ -161,6 +168,8 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [ 
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
 
@@ -184,5 +193,6 @@ SIMPLE_JWT = {
     'TOKEN_USER_CLASS': 'accounts.User',
 }
 
-TIME_ZONE = "Asia/Seoul"
-USE_TZ = True
+# allauth 설정
+ACCOUNT_LOGIN_METHODS = {'email'}                  # 로그인 방식 설정
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*']    # 회원가입 시 필수 입력 필드 설정

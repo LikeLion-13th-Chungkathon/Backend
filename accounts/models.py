@@ -7,6 +7,13 @@ class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 
+    @staticmethod
+    def get_user_by_email(email):
+        try:
+            return User.objects.get(email=email)
+        except Exception:
+            return None
+
 class TeamMember(models.Model):
 
     Roles = (('Admin', '팀장'), ('Member', '팀원'))
