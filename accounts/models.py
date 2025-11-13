@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 class User(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
+    nickname = models.CharField(max_length=30, unique=True, null=True, blank=True)
 
     @staticmethod
     def get_user_by_email(email):
