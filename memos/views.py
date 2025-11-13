@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
 from datetime import datetime
+from portfolios.models import Log
 
 class UserMemoListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -20,8 +21,13 @@ class UserMemoListView(APIView):
     def post(self, request):
         serializer = MemoSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(user=request.user)
-            return Response({"results": serializer.data}, status=status.HTTP_201_CREATED)
+            memo = serializer.save(user=request.user)
+            log_result = Log.give_log(request.user, memo.project, "DAILY_COMPLETE")
+            return Response(
+                {
+                    "results": serializer.data, 
+                    "log_result": log_result
+                }, status=status.HTTP_201_CREATED)
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     
     # 로그인한 사용자의 특정 프로젝트 메모 리스트를 날짜별로 조회

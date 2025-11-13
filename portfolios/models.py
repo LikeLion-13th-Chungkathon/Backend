@@ -1,6 +1,9 @@
 from django.db import models
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.db import IntegrityError
+from django.apps import apps
 
 class Project(models.Model):
     project_name = models.CharField(max_length=100)
@@ -10,6 +13,9 @@ class Project(models.Model):
     invite_code = models.CharField(max_length=20, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
+    def project_duration(self):
+        return (self.date_end - self.date_start).days + 1
+
     def clean(self):
         # start가 end보다 뒤라면 ValidationError 발생
         if self.date_start and self.date_end and self.date_start > self.date_end:
@@ -40,3 +46,62 @@ class TagStyle(models.Model):
             models.UniqueConstraint(fields=["project", "tag_detail"], name="unique_tag_detail_per_project"),
             models.UniqueConstraint(fields=["project", "tag_color"], name="unique_tag_color_per_project"),
         ]
+
+class Log(models.Model):
+    REASONS = (
+        ("DAILY_COMPLETE", "데일리 기록 완료"),
+        ("TAG_REVIEW_COMPLETE", "태깅 리뷰 완료"),
+    )
+
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    date = models.DateField(default=timezone.localdate)
+    reason = models.CharField(max_length=30, choices=REASONS)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "project", "date", "reason")
+
+    # 하루 최대 2개 통나무 지급 함수
+    @classmethod
+    def give_log(cls, user, project, reason):
+        today = timezone.localdate()
+        valid_reasons = dict(cls.REASONS).keys()
+
+        if reason not in valid_reasons:
+            raise ValueError("잘못된 통나무 지급 사유입니다.")
+
+        try:
+            cls.objects.create(user=user, project=project, date=today, reason=reason)
+
+            # ProjectHouse 진행률 자동 업데이트
+            house = ProjectHouse.objects.get(project=project)
+            house.update_progress()
+
+            return {"success": True, "message": f"통나무 지급 성공 ({reason})"}
+
+        except IntegrityError:
+            return {"success": False, "message": f"이미 오늘 {reason} 보상을 받았습니다."}
+
+class ProjectHouse(models.Model):
+    project = models.OneToOneField(Project, on_delete=models.CASCADE)
+    difficulty_ratio = models.FloatField(default=0.85)  # R = 0.85
+    total_required_logs = models.PositiveIntegerField(default=0)
+    current_logs = models.PositiveIntegerField(default=0)
+
+    def calculate_required_logs(self):
+        TeamMember = apps.get_model('accounts', 'TeamMember')
+        member_count = TeamMember.objects.filter(project=self.project).count()
+        duration = self.project.project_duration()
+        return int(member_count * duration * 2 * self.difficulty_ratio)
+
+    def update_progress(self):
+        self.current_logs = Log.objects.filter(project=self.project).count()
+        self.total_required_logs = self.calculate_required_logs()
+        self.save()
+
+    @property
+    def progress_percent(self):
+        if self.total_required_logs == 0:
+            return 0
+        return round((self.current_logs / self.total_required_logs) * 100, 1)

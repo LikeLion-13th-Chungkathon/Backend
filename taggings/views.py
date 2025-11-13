@@ -5,11 +5,13 @@ from .models import Tagging
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404 
+from django.utils import timezone
 from .serializers import TaggingSerializer
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
 from collections import defaultdict
+from portfolios.models import Log
 
 # 한 메모에 대한 태깅
 class MemoTaggingView(APIView):
@@ -25,10 +27,36 @@ class MemoTaggingView(APIView):
         if request.user != memo.user:
             return Response({"detail": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
         serializer = TaggingSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(memo=memo, user=request.user)
-            return Response({"results": serializer.data}, status=status.HTTP_201_CREATED)
-        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+
+        serializer.save(memo=memo, user=request.user)
+
+        # 오늘 작성한 메모들 태깅 확인 
+        today = timezone.localdate()
+        user = request.user
+        project = memo.project
+
+        todays_memos = Memo.objects.filter(
+            user=user, project=project, created_at__date=today
+        )
+
+        tagged_memo_ids = Tagging.objects.filter(
+            memo__in=todays_memos
+        ).values_list("memo_id", flat=True).distinct()
+
+        all_tagged = set(todays_memos.values_list("id", flat=True)) <= set(tagged_memo_ids)
+
+        log_result = None
+        if all_tagged:
+            log_result = Log.give_log(user, project, "TAG_REVIEW_COMPLETE")
+
+        return Response(
+            {
+                "results": serializer.data,
+                "log_result": log_result,
+            },
+            status=status.HTTP_201_CREATED,
+        )
     
     # 한 메모의 태깅 리스트
     def get(self, request, memo_id):

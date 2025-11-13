@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import *
 import uuid  # 초대 코드 생성을 위해 uuid 모듈 추가
+from accounts.models import TeamMember
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -49,3 +50,53 @@ class TagStyleSerializer(serializers.ModelSerializer):
         model = TagStyle
         fields = ["id", "project", "tag_detail", "tag_color"]
         read_only_fields = ["id", "project"]
+
+
+class ProjectHouseSerializer(serializers.ModelSerializer):
+    project_name = serializers.CharField(source="project.project_name", read_only=True)
+    member_count = serializers.SerializerMethodField()
+    duration_days = serializers.SerializerMethodField()
+    progress_percent = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProjectHouse
+        fields = [
+            "project_name",
+            "member_count",
+            "duration_days",
+            "difficulty_ratio",
+            "current_logs",
+            "total_required_logs",
+            "progress_percent",
+        ]
+
+    def get_member_count(self, obj):
+        return obj.project.teammember_set.count()
+
+    def get_duration_days(self, obj):
+        return (obj.project.date_end - obj.project.date_start).days + 1
+
+    def get_progress_percent(self, obj):
+        return obj.progress_percent
+    
+class ContributionSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+    total_logs = serializers.SerializerMethodField()
+    max_possible_logs = serializers.SerializerMethodField()
+    contribution_percent = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeamMember
+        fields = ["username", "role", "total_logs", "max_possible_logs", "contribution_percent"]
+
+    def get_total_logs(self, obj):
+        return Log.objects.filter(user=obj.user, project=obj.project).count()
+
+    def get_max_possible_logs(self, obj):
+        duration = (obj.project.date_end - obj.project.date_start).days + 1
+        return duration * 2
+
+    def get_contribution_percent(self, obj):
+        total = self.get_total_logs(obj)
+        max_logs = self.get_max_possible_logs(obj)
+        return round((total / max_logs) * 100, 1) if max_logs else 0
