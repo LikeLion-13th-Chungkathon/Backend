@@ -145,16 +145,23 @@ def google_callback(request):
     
     user_info_json = user_info.json()
 
-    data = {
-        "username": user_info_json['name'],
-        "email": user_info_json['email']
-    }
+    email = user_info_json.get('email')
+    username_from_google = user_info_json.get('name') # 유저가 언급한 "랜덤 문자열"(실제로는 Google 이름)
+
+    if not email:
+        return JsonResponse({'error': 'Email not provided by Google.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # --- 로직 변경 지점 ---
+    # 기존 OAuthSerializer 대신 뷰에서 직접 유저 존재 여부 확인
     
-    serializer = OAuthSerializer(data=data)
-    if serializer.is_valid(raise_exception=True):
-        user = serializer.validated_data["user"]
-        access_token = serializer.validated_data["access_token"]
-        refresh_token = serializer.validated_data["refresh_token"]
+    user = User.get_user_by_email(email=email)
+
+    if user:
+        # --- CASE 1: 사용자가 존재할 경우 (로그인) ---
+        # 기존 사용자이므로, 토큰을 발급하여 로그인시킵니다.
+        token = RefreshToken.for_user(user)
+        access_token = str(token.access_token)
+        refresh_token = str(token)
 
         res = JsonResponse(
             {
@@ -162,6 +169,7 @@ def google_callback(request):
                     "id": user.id,
                     "username": user.username,
                     "email": user.email,
+                    "nickname": user.nickname, # 닉네임 정보 추가
                 },
                 "message": "google social login success!",
                 "token": {
@@ -174,6 +182,60 @@ def google_callback(request):
         res.set_cookie("access-token", access_token, httponly=True)
         res.set_cookie("refresh-token", refresh_token, httponly=True)
         return res
+    
+    else:
+        # --- CASE 2: 사용자가 존재하지 않을 경우 (신규 가입) ---
+        # 신규 사용자이므로, 프론트엔드에 닉네임 입력을 요청합니다.
+        # Google이 제공한 이메일과 이름을 반환하여 프론트가 다음 단계(회원가입)에서 사용하도록 합니다.
+        return JsonResponse(
+            {
+                "message": "new_user_nickname_required",
+                "email": email,
+                "username_from_google": username_from_google,
+            },
+            status=status.HTTP_202_ACCEPTED # 202 Accepted: 요청은 받았으나 처리가 완료되지 않음 (닉네임 필요)
+        )
+
+class GoogleSignupView(APIView):
+    """
+    프론트엔드에서 닉네임까지 모두 받아 실제 회원가입을 처리합니다.
+    (POST: /accounts/google/signup/ 등)
+    """
+    def post(self, request):
+        # 프론트엔드는 202 응답을 받고, 사용자가 닉네임을 입력하면
+        # { email, username_from_google, nickname }을 이 API로 전송합니다.
+        
+        serializer = GoogleSignupSerializer(data=request.data)
+        
+        if serializer.is_valid(raise_exception=True):
+            # 시리얼라이저의 create_user_and_get_tokens 메서드 호출
+            data = serializer.save() 
+            
+            user = data['user']
+            access_token = data['access_token']
+            refresh_token = data['refresh_token']
+
+            res = JsonResponse(
+                {
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "nickname": user.nickname,
+                    },
+                    "message": "google social signup success!",
+                    "token": {
+                        "access_token": access_token,
+                        "refresh_token": refresh_token,
+                    },
+                },
+                status=status.HTTP_201_CREATED, # 201 Created: 리소스 생성 성공
+            )
+            res.set_cookie("access-token", access_token, httponly=True)
+            res.set_cookie("refresh-token", refresh_token, httponly=True)
+            return res
+        
+        # raise_exception=True로 인해 유효성 검사 실패 시 400 Bad Request 자동 반환
 
 # # -- TeamMember 관련 뷰 --
 # class TeamMemberCreateView(APIView):

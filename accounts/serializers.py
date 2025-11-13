@@ -125,6 +125,81 @@ class OAuthSerializer(serializers.ModelSerializer):
 
         return data
     
+# 닉네임을 포함한 Google 신규 회원가입 전용 시리얼라이저
+class GoogleSignupSerializer(serializers.ModelSerializer):
+    """
+    신규 Google 유저의 회원가입을 처리합니다.
+    닉네임(필수), 이메일(필수), Google이름(username_from_google)을 받습니다.
+    """
+    email = serializers.EmailField(required=True)
+    nickname = serializers.CharField(required=True)
+    # 프론트에서 username_from_google 라는 key로 Google 이름을 받아옵니다.
+    # write_only=True: 이 필드는 오직 쓰기(역직렬화)에만 사용됨을 의미합니다.
+    username_from_google = serializers.CharField(required=True, write_only=True) 
+
+    class Meta:
+        model = User
+        # 실제 User 모델에 저장할 필드 (username은 내부에서 생성)
+        fields = ['email', 'nickname', 'username_from_google'] 
+
+    def validate_email(self, value):
+        """이메일 중복 검사"""
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("User with this email already exists.")
+        return value
+
+    def validate_nickname(self, value):
+        """닉네임 중복 검사 (모델의 unique=True와 별개로 시리얼라이저단에서 확인)"""
+        if User.objects.filter(nickname=value).exists():
+            raise serializers.ValidationError("This nickname is already taken.")
+        return value
+
+    def _create_unique_username(self, base_name):
+        """
+        Google이 제공한 이름(base_name)을 기반으로 고유한 username을 생성합니다.
+        (AbstractUser의 username은 unique=True여야 함)
+        """
+        username = base_name
+        count = 1
+        # "홍길동" -> "홍길동_1", "홍길동_2" ...
+        while User.objects.filter(username=username).exists():
+            username = f"{base_name}_{count}"
+            count += 1
+        return username
+
+    def save(self, **kwargs):
+        """
+        create 메서드를 직접 호출하는 대신, save를 오버라이드하여
+        유저 생성과 토큰 발급을 한 번에 처리하고 뷰로 반환합니다.
+        """
+        validated_data = self.validated_data
+        
+        email = validated_data['email']
+        nickname = validated_data['nickname']
+        username_from_google = validated_data['username_from_google']
+
+        # Google 이름을 기반으로 고유한 username 생성
+        unique_username = self._create_unique_username(username_from_google)
+
+        # User 생성 (AbstractUser의 create_user 사용)
+        user = User.objects.create_user(
+            username=unique_username,
+            email=email,
+            nickname=nickname
+            # OAuth 유저는 별도 비밀번호가 필요 없습니다.
+        )
+
+        # 토큰 생성
+        token = RefreshToken.for_user(user)
+        access_token = str(token.access_token)
+        refresh_token = str(token)
+
+        # 뷰에서 필요한 데이터를 딕셔너리로 반환
+        return {
+            "user": user,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
 class TeamMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeamMember
