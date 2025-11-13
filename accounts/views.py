@@ -175,32 +175,42 @@ def google_callback(request):
         res.set_cookie("refresh-token", refresh_token, httponly=True)
         return res
 
-# -- TeamMember 관련 뷰 --
-class TeamMemberCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+# # -- TeamMember 관련 뷰 --
+# class TeamMemberCreateView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        request_body=TeamMemberSerializer,
-        responses={201: "team member created"}
-    )
-    def post(self, request):
-        serializer = TeamMemberSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+#     @swagger_auto_schema(
+#         request_body=TeamMemberSerializer,
+#         responses={201: "team member created"}
+#     )
+#     def post(self, request):
+#         serializer = TeamMemberSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
 
-        try:
-            team_member = serializer.save()
-        except ValidationError as e:
-            # 모델에서 발생한 ValidationError를 400으로 반환
-            return Response(
-                {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
-            )
+#         try:
+#             team_member = serializer.save()
+#         except ValidationError as e:
+#             # 모델에서 발생한 ValidationError를 400으로 반환
+#             return Response(
+#                 {"error": str(e)}, status=status.HTTP_400_BAD_REQUEST
+#             )
         
-        return Response(TeamMemberSerializer(team_member).data, status=status.HTTP_201_CREATED)
+#         return Response(TeamMemberSerializer(team_member).data, status=status.HTTP_201_CREATED)
 
 class TeamMemberListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         team_members = TeamMember.objects.all()
+
+        project_id = request.query_params.get("project_id")
+        role = request.query_params.get("role")
+
+        if project_id:
+            team_members = team_members.filter(project__id=project_id)
+
+        if role:
+            team_members = team_members.filter(role=role)
+
         serializer = TeamMemberSerializer(team_members, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({"results": serializer.data}, status=status.HTTP_200_OK)
