@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializers import *
 from .models import Project, TagStyle
+from accounts.models import TeamMember
+from accounts.serializers import TeamMemberSerializer
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, BasePermission
@@ -25,19 +27,30 @@ class ProjectCreateView(APIView):
     )
     def post(self, request):
         serializer = ProjectCreateSerializer(data=request.data)
-        if serializer.is_valid():
+        serializer.is_valid(raise_exception=True)
+
+        try:
             # serializer.save()가 호출될 때,
             # 'owner'를 request.user로 지정하여 넘겨줍니다.
             # 이 'owner' 값은 serializer의 create 메서드로 전달됩니다.
-            serializer.save(owner=request.user) 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            project = serializer.save(owner=request.user)
+            TeamMember.objects.create(
+                user=request.user,
+                project=project,
+                role="Admin"
+            )
+        except ValidationError as e:
+            # 모델에서 발생한 clean() 예외 처리 (프로젝트 6명 인원 제한)
+            return Response(
+                {"error": e.message if hasattr(e, "message") else str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
-    # 로그인한 사용자의 프로젝트 리스트 조회
+    # 모든 프로젝트 리스트 조회
     def get(self, request):
-        user = request.user
-        memos = Project.objects.filter(teammember__user=user).order_by("-created_at")
-        serializer = ProjectSerializer(memos, many=True, context={"request": request})
+        projects = Project.objects.all().order_by("-created_at")
+        serializer = ProjectSerializer(projects, many=True, context={"request": request})
         return Response({"results": serializer.data}, status=status.HTTP_200_OK)
     
 # 조회, 수정, 삭제를 위한 뷰
@@ -135,3 +148,39 @@ class TagStyleDeleteView(APIView):
         tag_style.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
+class InviteCodeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        invite_code = request.data.get("invite_code")
+        project = get_object_or_404(Project, invite_code=invite_code)
+        user = request.user
+
+        # 이미 해당 프로젝트에 가입되어 있는지 확인
+        if TeamMember.objects.filter(user=user, project=project).exists():
+            return Response(
+                {"message": "이미 해당 프로젝트에 속해있습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 실제 가입 시도
+        try:
+            team_member = TeamMember.objects.create(
+                user=user,
+                project=project,
+                role="Member"
+            )
+        except ValidationError as e:
+            # 모델에서 발생한 clean() 예외 처리 (프로젝트 6명 인원 제한)
+            return Response(
+                {"error": e.message if hasattr(e, "message") else str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return Response(
+            {
+                "message": f"'{project.project_name}' 프로젝트에 성공적으로 가입했습니다!",
+                "team_member": TeamMemberSerializer(team_member).data
+            },
+            status=status.HTTP_201_CREATED
+        )

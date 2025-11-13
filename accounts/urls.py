@@ -15,7 +15,7 @@ urlpatterns = [
     path("google/login/", google_login, name="google_login"), # 프론트 협업 시 삭제
     path("google/callback/", google_callback, name="google_callback"),
 
-    path("team/members/", TeamMemberCreateView.as_view()),
+    # path("team/members/", TeamMemberCreateView.as_view()),
     path("team/members/list/", TeamMemberListView.as_view()),
 
     path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
