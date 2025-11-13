@@ -15,7 +15,7 @@ from django.shortcuts import redirect
 from json import JSONDecodeError
 from django.http import JsonResponse
 import requests 
-
+import json
 
 # -- JWT 기반 회원가입 뷰 --
 class RegisterView(APIView):
@@ -103,25 +103,25 @@ class LogoutView(APIView):
 # -- Oauth2 기반 회원가입/로그인 뷰 --
 
 # 구글 소셜 로그인 용 설정
-GOOGLE_REDIRECT = get_secret("GOOGLE_REDIRECT")
+#GOOGLE_REDIRECT = get_secret("GOOGLE_REDIRECT")
 GOOGLE_CALLBACK_URI = get_secret("GOOGLE_CALLBACK_URI") # 프론트의 주소도 추가 되어 있어야 함.
 GOOGLE_CLIENT_ID = get_secret("GOOGLE_CLIENT_ID")
 GOOGLE_SECRET = get_secret("GOOGLE_SECRET")
 GOOGLE_SCOPE = get_secret("GOOGLE_SCOPE_USERINFO")
 
 # 프론트와 협업 시, google_login 뷰는 프론트에서 구현하므로 삭제 예정
-def google_login(request):
-    return redirect(f"{GOOGLE_REDIRECT}?client_id={GOOGLE_CLIENT_ID}&response_type=code&redirect_uri={GOOGLE_CALLBACK_URI}&scope={GOOGLE_SCOPE}")
+# def google_login(request):
+#     return redirect(f"{GOOGLE_REDIRECT}?client_id={GOOGLE_CLIENT_ID}&response_type=code&redirect_uri={GOOGLE_CALLBACK_URI}&scope={GOOGLE_SCOPE}")
 
 def google_callback(request):
     
     
     # 프론트 협업 시 추가(프론트가 body로 인가코드를 넘겨준다고 가정)
-    # body = json.loads(request.body.decode('utf-8'))
-    # code = body['code'] # 프론트가 어떻게 넘겨주냐에 따라 달라짐
+    body = json.loads(request.body.decode('utf-8'))
+    code = body['code'] # 프론트가 어떻게 넘겨주냐에 따라 달라짐
 
     # 인가코드 받아오기 (프론트 협업시 삭제 예정)
-    code = request.GET.get("code", None)     
+    # code = request.GET.get("code", None)     
     
     if code is None:
         return JsonResponse({'error': 'Authorization code error.'}, status=status.HTTP_400_BAD_REQUEST)
