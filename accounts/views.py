@@ -107,7 +107,7 @@ GOOGLE_REDIRECT = get_secret("GOOGLE_REDIRECT")
 GOOGLE_CALLBACK_URI = get_secret("GOOGLE_CALLBACK_URI") # 프론트의 주소도 추가 되어 있어야 함.
 GOOGLE_CLIENT_ID = get_secret("GOOGLE_CLIENT_ID")
 GOOGLE_SECRET = get_secret("GOOGLE_SECRET")
-GOOGLE_SCOPE = get_secret("GOOGLE_SCOPE")
+GOOGLE_SCOPE = get_secret("GOOGLE_SCOPE_USERINFO")
 
 # 프론트와 협업 시, google_login 뷰는 프론트에서 구현하므로 삭제 예정
 def google_login(request):
