@@ -34,10 +34,20 @@ class ProjectCreateView(APIView):
             # 'owner'를 request.user로 지정하여 넘겨줍니다.
             # 이 'owner' 값은 serializer의 create 메서드로 전달됩니다.
             project = serializer.save(owner=request.user)
+
+            # 생성한 사람 Admin으로 설정
             TeamMember.objects.create(
                 user=request.user,
                 project=project,
                 role="Admin"
+            )
+
+            # 프로젝트의 통나무집 기본값으로 생성
+            ProjectHouse.objects.create(
+                project=project,
+                difficulty_ratio=0.85, 
+                total_required_logs=0,   
+                current_logs=0
             )
         except ValidationError as e:
             # 모델에서 발생한 clean() 예외 처리 (프로젝트 6명 인원 제한)
@@ -184,3 +194,27 @@ class InviteCodeView(APIView):
             },
             status=status.HTTP_201_CREATED
         )
+    
+class ProjectHouseView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        project = get_object_or_404(Project, id=pk)
+        house = get_object_or_404(ProjectHouse, project=project)
+
+        # 진행률 업데이트
+        house.current_logs = Log.objects.filter(project=project).count()
+        house.total_required_logs = house.calculate_required_logs()
+        house.save()
+
+        serializer = ProjectHouseSerializer(house)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class ContributionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        project = get_object_or_404(Project, id=pk)
+        team_members = TeamMember.objects.filter(project=project)
+        serializer = ContributionSerializer(team_members, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

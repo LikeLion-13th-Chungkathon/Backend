@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from portfolios.models import Project
+from portfolios.models import Project, Log
 from django.core.exceptions import ValidationError
 
 class User(AbstractUser):
@@ -23,6 +23,14 @@ class TeamMember(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     role = models.CharField(max_length=10, choices=Roles)
     joined_at = models.DateTimeField(auto_now_add=True)
+
+    def total_logs(self):
+        return Log.objects.filter(user=self.user, project=self.project).count()
+
+    def contribution_percent(self):
+        duration = self.project.project_duration()
+        max_logs = duration * 2  # 하루 최대 2개
+        return round((self.total_logs() / max_logs) * 100, 1)
 
     def clean(self):
         # 현재 프로젝트에 속한 팀원 수 체크
