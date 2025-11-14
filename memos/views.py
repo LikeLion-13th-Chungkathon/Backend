@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
 from datetime import datetime
 from portfolios.models import Log
+from drf_yasg import openapi
 
 class UserMemoListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -31,10 +32,26 @@ class UserMemoListView(APIView):
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     
     # 로그인한 사용자의 특정 프로젝트 메모 리스트를 날짜별로 조회
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'project_id',
+                openapi.IN_QUERY,
+                description="프로젝트 id",
+                type=openapi.TYPE_INTEGER,
+            ),
+            openapi.Parameter(
+                'date',
+                openapi.IN_QUERY,
+                description="날짜(YYYY-MM-DD)",
+                type=openapi.TYPE_STRING,
+            )
+        ]
+    )
     def get(self, request):
         user = request.user
         project_id = request.query_params.get("project_id")
-        date_str = request.query_params.get("date")  # "2025-11-12"
+        date = request.query_params.get("date")  # "2025-11-12"
 
         memos = Memo.objects.filter(user=user)
 
@@ -43,9 +60,9 @@ class UserMemoListView(APIView):
             memos = memos.filter(project_id=project_id)
 
         # 날짜 기준 필터링
-        if date_str:
+        if date:
             try:
-                date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                date = datetime.strptime(date, "%Y-%m-%d").date()
                 memos = memos.filter(created_at__date=date)
             except ValueError:
                 return Response({"error": "Invalid date format (YYYY-MM-DD expected)"}, status=status.HTTP_400_BAD_REQUEST)

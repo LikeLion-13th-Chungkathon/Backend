@@ -10,8 +10,10 @@ from .serializers import TaggingSerializer
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
+from django.core.exceptions import ValidationError
 from collections import defaultdict
 from portfolios.models import Log
+
 
 # 한 메모에 대한 태깅
 class MemoTaggingView(APIView):
@@ -24,31 +26,23 @@ class MemoTaggingView(APIView):
     )
     def post(self, request, memo_id):
         memo = get_object_or_404(Memo, id=memo_id)
+        
         if request.user != memo.user:
             return Response({"detail": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+        
         serializer = TaggingSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        serializer.save(memo=memo, user=request.user)
-
-        # 오늘 작성한 메모들 태깅 확인 
-        today = timezone.localdate()
-        user = request.user
-        project = memo.project
-
-        todays_memos = Memo.objects.filter(
-            user=user, project=project, created_at__date=today
-        )
-
-        tagged_memo_ids = Tagging.objects.filter(
-            memo__in=todays_memos
-        ).values_list("memo_id", flat=True).distinct()
-
-        all_tagged = set(todays_memos.values_list("id", flat=True)) <= set(tagged_memo_ids)
-
-        log_result = None
-        if all_tagged:
-            log_result = Log.give_log(user, project, "TAG_REVIEW_COMPLETE")
+        
+        try:
+            serializer.save(memo=memo, user=request.user)
+            log_result = Log.give_log(request.user, memo.project, "TAG_REVIEW_COMPLETE")
+       
+        except ValidationError as e:
+            # 모델에서 발생한 clean() 예외 처리 (프로젝트 6명 인원 제한)
+            return Response(
+                {"error": e.message if hasattr(e, "message") else str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response(
             {

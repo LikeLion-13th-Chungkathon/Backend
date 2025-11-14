@@ -14,4 +14,5 @@ class Memo(BaseModel):
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memos")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="memos")
+    date = models.DateField()
     contents = models.TextField(default="", max_length=500)
