@@ -14,11 +14,40 @@ from drf_yasg import openapi
 class UserMemoListView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # 메모 작성
     @swagger_auto_schema(
         request_body=MemoSerializer,
-        responses={201: "memo created"}
+        responses={
+            201: openapi.Response(
+                description="메모 생성 성공",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "results": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "id": openapi.Schema(type=openapi.TYPE_INTEGER, example=9),
+                                "created_at": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14T23:42:49.248706+09:00"),
+                                "modified_at": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14T23:42:49.248706+09:00"),
+                                "date": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14"),
+                                "contents": openapi.Schema(type=openapi.TYPE_STRING, example="테스트입니다요"),
+                                "user": openapi.Schema(type=openapi.TYPE_INTEGER, example=2),
+                                "project": openapi.Schema(type=openapi.TYPE_INTEGER, example=7),
+                            }
+                        ),
+                        "log_result": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "success": openapi.Schema(type=openapi.TYPE_BOOLEAN, example=True),
+                                "message": openapi.Schema(type=openapi.TYPE_STRING, example="통나무 지급 성공 (DAILY_COMPLETE)")
+                            }
+                        )
+                    }
+                )
+            ),
+            400: "잘못된 요청"
+        }
     )
-    # 메모 작성
     def post(self, request):
         serializer = MemoSerializer(data=request.data)
         if serializer.is_valid():
@@ -46,7 +75,44 @@ class UserMemoListView(APIView):
                 description="날짜(YYYY-MM-DD)",
                 type=openapi.TYPE_STRING,
             )
-        ]
+        ],
+        responses={
+            200: openapi.Response(
+                description="메모 리스트 조회 성공",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "results": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(
+                                type=openapi.TYPE_OBJECT,
+                                properties={
+                                    "id": openapi.Schema(type=openapi.TYPE_INTEGER, example=9),
+                                    "created_at": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14T23:42:49.248706+09:00"),
+                                    "modified_at": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14T23:42:49.248706+09:00"),
+                                    "date": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14"),
+                                    "contents": openapi.Schema(type=openapi.TYPE_STRING, example="메모 내용입니다."),
+                                    "user": openapi.Schema(type=openapi.TYPE_INTEGER, example=2),
+                                    "project": openapi.Schema(type=openapi.TYPE_INTEGER, example=7),
+                                }
+                            )
+                        )
+                    }
+                )
+            ),
+            400: openapi.Response(
+                description="잘못된 날짜 형식",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "error": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="Invalid date format (YYYY-MM-DD expected)"
+                        )
+                    }
+                )
+            ),
+        }
     )
     def get(self, request):
         user = request.user
@@ -75,6 +141,54 @@ class UserMemoDetailView(APIView):
     permission_classes = [IsAuthenticated]
     
     # 메모 상세 조회
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="메모 상세 조회 성공",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "results": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "id": openapi.Schema(type=openapi.TYPE_INTEGER, example=9),
+                                "created_at": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14T23:42:49.248706+09:00"),
+                                "modified_at": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14T23:42:49.248706+09:00"),
+                                "date": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14"),
+                                "contents": openapi.Schema(type=openapi.TYPE_STRING, example="오늘 작성한 메모 내용입니다."),
+                                "user": openapi.Schema(type=openapi.TYPE_INTEGER, example=2),
+                                "project": openapi.Schema(type=openapi.TYPE_INTEGER, example=7),
+                            }
+                        )
+                    }
+                )
+            ),
+            403: openapi.Response(
+                description="권한 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="Permission denied"
+                        )
+                    }
+                )
+            ),
+            404: openapi.Response(
+                description="메모를 찾지 못함",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="Not found."
+                        )
+                    }
+                )
+            ),
+        }
+    )
     def get(self, request, memo_id):
         memo = get_object_or_404(Memo, id=memo_id)
         if request.user != memo.user:
@@ -82,11 +196,54 @@ class UserMemoDetailView(APIView):
         serializer = MemoSerializer(memo)
         return Response({"results": serializer.data}, status=status.HTTP_200_OK)
     
+    # 메모 수정
     @swagger_auto_schema(
         request_body=MemoSerializer,
-        responses={201: "memo updated"}
+        responses={
+            200: openapi.Response(
+                description="메모 수정 성공",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "results": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "id": openapi.Schema(type=openapi.TYPE_INTEGER, example=9),
+                                "created_at": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14T23:42:49.248706+09:00"),
+                                "modified_at": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14T23:55:10.123456+09:00"),
+                                "date": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14"),
+                                "contents": openapi.Schema(type=openapi.TYPE_STRING, example="수정된 메모 내용입니다."),
+                                "user": openapi.Schema(type=openapi.TYPE_INTEGER, example=2),
+                                "project": openapi.Schema(type=openapi.TYPE_INTEGER, example=7),
+                            }
+                        )
+                    }
+                )
+            ),
+            400: openapi.Response(
+                description="잘못된 요청",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "errors": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            example={"contents": ["내용을 입력해 주세요."]}
+                        )
+                    }
+                )
+            ),
+            403: openapi.Response(
+                description="권한 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(type=openapi.TYPE_STRING, example="Permission denied")
+                    }
+                )
+            ),
+            404: "메모를 찾지 못함",
+        }
     )
-    # 메모 수정
     def put(self, request, memo_id):
         memo = get_object_or_404(Memo, id=memo_id)
         if request.user != memo.user:
@@ -98,6 +255,13 @@ class UserMemoDetailView(APIView):
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     
     # 메모 삭제
+    @swagger_auto_schema(
+        responses={
+            204: "메모 삭제 성공",
+            403: "권한 없음",
+            404: "메모를 찾지 못함"
+        }
+    )
     def delete(self, request, memo_id):
         memo = get_object_or_404(Memo, id=memo_id)
         if request.user != memo.user:
