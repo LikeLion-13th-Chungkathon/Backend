@@ -45,13 +45,6 @@ class ProjectSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'owner', 'invite_code', 'created_at']
 
 
-class TagStyleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TagStyle
-        fields = ["id", "project", "tag_detail", "tag_color"]
-        read_only_fields = ["id", "project"]
-
-
 class ProjectHouseSerializer(serializers.ModelSerializer):
     project_name = serializers.CharField(source="project.project_name", read_only=True)
     member_count = serializers.SerializerMethodField()

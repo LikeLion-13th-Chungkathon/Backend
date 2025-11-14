@@ -1,12 +1,11 @@
 from django.shortcuts import render
 from portfolios.models import Project
 from memos.models import Memo
-from .models import Tagging
+from .models import Tagging, TagStyle
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404 
-from django.utils import timezone
-from .serializers import TaggingSerializer
+from .serializers import TaggingSerializer, TagStyleSerializer
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
@@ -386,3 +385,38 @@ class TaggingDetailView(APIView):
             return Response({"detail": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
         tagging.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    tag_style_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    properties={
+        "id": openapi.Schema(type=openapi.TYPE_INTEGER, example=1),
+        "project": openapi.Schema(type=openapi.TYPE_INTEGER, example=7),
+        "tag_detail": openapi.Schema(type=openapi.TYPE_STRING, example="중요"),
+        "tag_color": openapi.Schema(type=openapi.TYPE_STRING, example="#FFAA22"),
+    }
+)
+
+class TagStyleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # 태그 스타일 전체 리스트 조회
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="태그 스타일 리스트 조회 성공",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "results": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=tag_style_schema
+                        )
+                    }
+                )
+            )
+        }
+    )
+    def get(self, request):
+        tag_styles = TagStyle.objects.all()
+        serializers = TagStyleSerializer(tag_styles, many=True, context={"request": request})
+        return Response({"results": serializers.data}, status=status.HTTP_200_OK)

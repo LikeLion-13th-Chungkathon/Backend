@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Tagging
+from .models import Tagging, TagStyle
 
 class TaggingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -7,4 +7,8 @@ class TaggingSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["id", "user", "memo"]
 
-        
+class TagStyleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TagStyle
+        fields = ["id", "project", "tag_detail", "tag_color"]
+        read_only_fields = ["id", "project"]
