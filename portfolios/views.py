@@ -147,15 +147,16 @@ class TagStyleDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
     # 태그 스타일 삭제
-    def delete(self, request, tagstyle_id):
-        tag_style = get_object_or_404(TagStyle, id=tagstyle_id)
-        project = tag_style.project
+    def delete(self, request, pk, tagstyle_id):
+        project = get_object_or_404(Project, id=pk)
 
         if project.owner != request.user:
             return Response({"detail": "팀장만 태그 스타일을 삭제할 수 있습니다."},
                             status=status.HTTP_403_FORBIDDEN)
     
+        tag_style = get_object_or_404(TagStyle, id=tagstyle_id, project=project)
         tag_style.delete()
+        
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class InviteCodeView(APIView):
