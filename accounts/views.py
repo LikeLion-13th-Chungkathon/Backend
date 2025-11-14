@@ -19,6 +19,8 @@ import json
 # -- JWT 기반 회원가입 뷰 --
 class RegisterView(APIView):
     @swagger_auto_schema(
+        operation_summary= "JWT 기반 회원가입",
+        operation_description= "Oauth를 사용하고 있기에 지금은 사용하지 않음. 사용할 것을 대비하여 남겨둠.",
         request_body=RegisterSerializer,
         responses={201: "register success"}
     )
@@ -52,6 +54,8 @@ class RegisterView(APIView):
 
 class AuthView(APIView):
     @swagger_auto_schema(
+        operation_summary= "JWT 기반 로그인",
+        operation_description= "Oauth를 사용하고 있기에 지금은 사용하지 않음. 사용할 것을 대비하여 남겨둠.",
         request_body=AuthSerializer,
         responses={200: "login success"}
     )
@@ -200,6 +204,97 @@ class GoogleSignupView(APIView):
     프론트엔드에서 닉네임까지 모두 받아 실제 회원가입을 처리합니다.
     (POST: /accounts/google/signup/ 등)
     """
+    @swagger_auto_schema(
+        operation_summary="구글 소셜 회원가입 완료 (닉네임 설정)",
+        operation_description=(
+            "비회원인 경우 callback 이후 조건부로 접근하는 엔드포인트입니다.\n\n"
+            "프론트엔드에서 전달받은 구글 이메일과 닉네임을 이용해 "
+            "User를 생성하고 JWT 토큰(access/refresh)을 발급합니다.\n\n"
+            "요청 예시:\n"
+            "{\n"
+            '   "email": "google_email@gmail.com",\n'
+            '   "username_from_google": "raw google username",\n'
+            '   "nickname": "사용자가 선택한 닉네임"\n'
+            "}"
+        ),
+        tags=["account"],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=["email", "nickname"],
+            properties={
+                "email": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    example="google_email@gmail.com",
+                ),
+                "username_from_google": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    example="John Doe",
+                    description="구글 프로필에서 받아온 name 값. 서버는 닉네임으로 사용하지 않음.",
+                ),
+                "nickname": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    example="myCustomNickname",
+                    description="사용자가 실제로 사용할 닉네임",
+                ),
+            },
+        ),
+        responses={
+            201: openapi.Response(
+                description="google social signup success!",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "user": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "id": openapi.Schema(
+                                    type=openapi.TYPE_INTEGER,
+                                    example=1,
+                                ),
+                                "username": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="myCustomNickname",
+                                    description="닉네임(=username)",
+                                ),
+                                "email": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="google_email@gmail.com",
+                                ),
+                                "nickname": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="myCustomNickname",
+                                ),
+                            },
+                        ),
+                        "message": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="google social signup success!",
+                        ),
+                        "token": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "access_token": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                                ),
+                                "refresh_token": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...(refresh)",
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            ),
+            400: openapi.Response(
+                description="잘못된 요청 또는 Validation Error",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    example={"error": "invalid data"},
+                ),
+            ),
+        },
+    )
     def post(self, request):
         # 프론트엔드는 202 응답을 받고, 사용자가 닉네임을 입력하면
         # { email, username_from_google, nickname }을 이 API로 전송합니다.
