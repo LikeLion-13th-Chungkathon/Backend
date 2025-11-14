@@ -9,6 +9,20 @@ from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, BasePermission
 from django.http import Http404
 from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
+project_detail_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    properties={
+        "id": openapi.Schema(type=openapi.TYPE_INTEGER, example=12),
+        "project_name": openapi.Schema(type=openapi.TYPE_STRING, example="내 프로젝트"),
+        "date_start": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-10"),
+        "date_end": openapi.Schema(type=openapi.TYPE_STRING, example="2025-12-10"),
+        "owner": openapi.Schema(type=openapi.TYPE_INTEGER, example=1),
+        "invite_code": openapi.Schema(type=openapi.TYPE_STRING, example="a94bf2e13c"),
+        "created_at": openapi.Schema(type=openapi.TYPE_STRING, example="2025-11-14T23:50:00.123456+09:00"),
+    }
+)
 
 class IsProjectOwner(BasePermission):
     """
@@ -23,7 +37,21 @@ class ProjectCreateView(APIView):
 
     @swagger_auto_schema(
         request_body=ProjectCreateSerializer,
-        responses={201: "project created"}
+        responses={
+            201: openapi.Response(
+                description="프로젝트 생성 성공",
+                schema=project_detail_schema
+            ),
+            400: openapi.Response(
+                description="잘못된 요청 - 날짜 오류 또는 인원수 제한",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "error": openapi.Schema(type=openapi.TYPE_STRING, example="시작일은 종료일보다 이후일 수 없습니다.")
+                    }
+                )
+            )
+        }
     )
     def post(self, request):
         serializer = ProjectCreateSerializer(data=request.data)
@@ -58,6 +86,22 @@ class ProjectCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     # 모든 프로젝트 리스트 조회
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="프로젝트 리스트 조회 성공",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "results": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=project_detail_schema
+                        )
+                    }
+                )
+            )
+        }
+    )
     def get(self, request):
         projects = Project.objects.all().order_by("-created_at")
         serializer = ProjectSerializer(projects, many=True, context={"request": request})
@@ -83,6 +127,35 @@ class ProjectDetailView(APIView):
             raise Http404
 
     # --- 상세 조회 (GET) ---
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="프로젝트 상세 조회 성공",
+                schema=project_detail_schema
+            ),
+            403: openapi.Response(
+                description="권한 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="You do not have permission to perform this action."
+                        )
+                    }
+                )
+            ),
+            404: openapi.Response(
+                description="프로젝트 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(type=openapi.TYPE_STRING, example="Not found.")
+                    }
+                )
+            )
+        }
+    )
     def get(self, request, pk):
         project = self.get_object(pk)
         serializer = ProjectSerializer(project) # 조회용 Serializer 사용
@@ -91,7 +164,39 @@ class ProjectDetailView(APIView):
     # --- 수정 (PUT: 전체 수정) ---
     @swagger_auto_schema(
         request_body=ProjectSerializer,
-        responses={200: "project all updated"}
+        responses={
+            200: openapi.Response(
+                description="프로젝트 전체 수정 성공",
+                schema=project_detail_schema
+            ),
+            400: openapi.Response(
+                description="잘못된 요청",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "project_name": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_STRING),
+                            example=["이 필드는 필수 항목입니다."]
+                        )
+                    }
+                )
+            ),
+            403: openapi.Response(
+                description="권한 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={"detail": openapi.Schema(type=openapi.TYPE_STRING, example="Permission denied")}
+                )
+            ),
+            404: openapi.Response(
+                description="프로젝트 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={"detail": openapi.Schema(type=openapi.TYPE_STRING, example="Not found.")}
+                )
+            )
+        }
     )
     def put(self, request, pk):
         project = self.get_object(pk)
@@ -105,7 +210,33 @@ class ProjectDetailView(APIView):
     # --- 수정 (PATCH: 부분 수정) ---
     @swagger_auto_schema(
         request_body=ProjectSerializer,
-        responses={200: "project part updated"}
+        responses={
+            200: openapi.Response(
+                description="프로젝트 부분 수정 성공",
+                schema=project_detail_schema
+            ),
+            400: openapi.Response(
+                description="잘못된 요청",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    example={"date_end": ["유효한 날짜 형식이어야 합니다."]}
+                )
+            ),
+            403: openapi.Response(
+                description="권한 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={"detail": openapi.Schema(type=openapi.TYPE_STRING, example="Permission denied")}
+                )
+            ),
+            404: openapi.Response(
+                description="프로젝트 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={"detail": openapi.Schema(type=openapi.TYPE_STRING, example="Not found.")}
+                )
+            )
+        }
     )
     def patch(self, request, pk):
         project = self.get_object(pk)
@@ -117,11 +248,65 @@ class ProjectDetailView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     # --- 삭제 (DELETE) ---
+    @swagger_auto_schema(
+        responses={
+            204: openapi.Response(description="프로젝트 삭제 성공"),
+            403: openapi.Response(
+                description="권한 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={"detail": openapi.Schema(type=openapi.TYPE_STRING, example="Permission denied")}
+                )
+            ),
+            404: openapi.Response(
+                description="프로젝트 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={"detail": openapi.Schema(type=openapi.TYPE_STRING, example="Not found.")}
+                )
+            )
+        }
+    )
     def delete(self, request, pk):
         project = self.get_object(pk)
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
+tag_style_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    properties={
+        "id": openapi.Schema(type=openapi.TYPE_INTEGER, example=1),
+        "project": openapi.Schema(type=openapi.TYPE_INTEGER, example=7),
+        "tag_detail": openapi.Schema(type=openapi.TYPE_STRING, example="중요"),
+        "tag_color": openapi.Schema(type=openapi.TYPE_STRING, example="#FFAA22"),
+    }
+)
+
+class TagStyleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # 태그 스타일 전체 리스트 조회
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="태그 스타일 리스트 조회 성공",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "results": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=tag_style_schema
+                        )
+                    }
+                )
+            )
+        }
+    )
+    def get(self, request):
+        tag_styles = TagStyle.objects.all()
+        serializers = TagStyleSerializer(tag_styles, many=True, context={"request": request})
+        return Response({"results": serializers.data}, status=status.HTTP_200_OK)
+        
 # class TagStyleCreateView(APIView):
 #     permission_classes = [IsAuthenticated]
 
@@ -158,10 +343,75 @@ class ProjectDetailView(APIView):
 #         tag_style.delete()
         
 #         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
+team_member_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    properties={
+        "user": openapi.Schema(type=openapi.TYPE_INTEGER, example=2),
+        "project": openapi.Schema(type=openapi.TYPE_INTEGER, example=7),
+        "role": openapi.Schema(type=openapi.TYPE_STRING, example="Member"),
+        "joined_at": openapi.Schema(
+            type=openapi.TYPE_STRING,
+            example="2025-11-14T23:50:00.123456+09:00"
+        ),
+    }
+)
+
 class InviteCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "invite_code": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    example="a94bf2e13c",
+                    description="프로젝트 초대 코드"
+                )
+            },
+            required=["invite_code"]
+        ),
+        responses={
+            201: openapi.Response(
+                description="프로젝트 가입 성공",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "message": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="'내 프로젝트' 프로젝트에 성공적으로 가입했습니다!"
+                        ),
+                        "team_member": team_member_schema
+                    }
+                )
+            ),
+            400: openapi.Response(
+                description="잘못된 요청",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "message": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="이미 해당 프로젝트에 속해있습니다."
+                        )
+                    }
+                )
+            ),
+            404: openapi.Response(
+                description="존재하지 않는 초대코드",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="Not found."
+                        )
+                    }
+                )
+            ),
+        }
+    )
     def post(self, request):
         invite_code = request.data.get("invite_code")
         project = get_object_or_404(Project, invite_code=invite_code)
@@ -196,9 +446,39 @@ class InviteCodeView(APIView):
             status=status.HTTP_201_CREATED
         )
     
+project_house_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    properties={
+        "project_name": openapi.Schema(type=openapi.TYPE_STRING, example="내 프로젝트"),
+        "member_count": openapi.Schema(type=openapi.TYPE_INTEGER, example=5),
+        "duration_days": openapi.Schema(type=openapi.TYPE_INTEGER, example=30),
+        "difficulty_ratio": openapi.Schema(type=openapi.TYPE_NUMBER, example=0.85),
+        "current_logs": openapi.Schema(type=openapi.TYPE_INTEGER, example=42),
+        "total_required_logs": openapi.Schema(type=openapi.TYPE_INTEGER, example=180),
+        "progress_percent": openapi.Schema(type=openapi.TYPE_NUMBER, example=23.3),
+    }
+)
+
 class ProjectHouseView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="프로젝트 진행도 조회 성공",
+                schema=project_house_schema
+            ),
+            404: openapi.Response(
+                description="프로젝트 또는 하우스를 찾을 수 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(type=openapi.TYPE_STRING, example="Not found.")
+                    }
+                )
+            )
+        }
+    )
     def get(self, request, pk):
         project = get_object_or_404(Project, id=pk)
         house = get_object_or_404(ProjectHouse, project=project)
@@ -210,10 +490,42 @@ class ProjectHouseView(APIView):
 
         serializer = ProjectHouseSerializer(house)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
+  
+contribution_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    properties={
+        "username": openapi.Schema(type=openapi.TYPE_STRING, example="juyoung"),
+        "role": openapi.Schema(type=openapi.TYPE_STRING, example="Member"),
+        "total_logs": openapi.Schema(type=openapi.TYPE_INTEGER, example=12),
+        "max_possible_logs": openapi.Schema(type=openapi.TYPE_INTEGER, example=60),
+        "contribution_percent": openapi.Schema(type=openapi.TYPE_NUMBER, example=20.0),
+    }
+)
+
 class ContributionView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description="프로젝트 팀원 기여도 조회 성공",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=contribution_schema
+                )
+            ),
+            404: openapi.Response(
+                description="프로젝트를 찾을 수 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(type=openapi.TYPE_STRING, example="Not found.")
+                    }
+                )
+            )
+        }
+    )
     def get(self, request, pk):
         project = get_object_or_404(Project, id=pk)
         team_members = TeamMember.objects.filter(project=project)

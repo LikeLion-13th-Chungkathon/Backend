@@ -6,7 +6,7 @@ from accounts.models import TeamMember
 class ProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ['id', 'project_name', 'owner', 'date_start', 'date_end', 'invite_code']
+        fields = ['id', 'project_name', 'owner', 'date_start', 'date_end', 'invite_code', 'created_at']
         read_only_fields = ['id', 'owner', 'invite_code']
 
     def create(self, validated_data):
