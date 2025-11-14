@@ -4,11 +4,10 @@ from rest_framework.response import Response
 from .serializers import *
 from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import logout
-
-from rest_framework import status
 
 from config.settings import get_secret
 from django.shortcuts import redirect
@@ -262,6 +261,22 @@ class GoogleSignupView(APIView):
 class TeamMemberListView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'project_id',
+                openapi.IN_QUERY,
+                description="프로젝트 id",
+                type=openapi.TYPE_INTEGER,
+            ),
+            openapi.Parameter(
+                'role',
+                openapi.IN_QUERY,
+                description="역할(Member, Admin)",
+                type=openapi.TYPE_STRING,
+            )
+        ]
+    )
     def get(self, request):
         team_members = TeamMember.objects.all()
 
