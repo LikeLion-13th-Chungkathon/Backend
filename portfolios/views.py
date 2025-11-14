@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .serializers import *
-from .models import Project, TagStyle
+from .models import Project
 from accounts.models import TeamMember
 from accounts.serializers import TeamMemberSerializer
 from rest_framework import status
@@ -271,41 +271,6 @@ class ProjectDetailView(APIView):
         project = self.get_object(pk)
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-tag_style_schema = openapi.Schema(
-    type=openapi.TYPE_OBJECT,
-    properties={
-        "id": openapi.Schema(type=openapi.TYPE_INTEGER, example=1),
-        "project": openapi.Schema(type=openapi.TYPE_INTEGER, example=7),
-        "tag_detail": openapi.Schema(type=openapi.TYPE_STRING, example="중요"),
-        "tag_color": openapi.Schema(type=openapi.TYPE_STRING, example="#FFAA22"),
-    }
-)
-
-class TagStyleView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    # 태그 스타일 전체 리스트 조회
-    @swagger_auto_schema(
-        responses={
-            200: openapi.Response(
-                description="태그 스타일 리스트 조회 성공",
-                schema=openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "results": openapi.Schema(
-                            type=openapi.TYPE_ARRAY,
-                            items=tag_style_schema
-                        )
-                    }
-                )
-            )
-        }
-    )
-    def get(self, request):
-        tag_styles = TagStyle.objects.all()
-        serializers = TagStyleSerializer(tag_styles, many=True, context={"request": request})
-        return Response({"results": serializers.data}, status=status.HTTP_200_OK)
         
 # class TagStyleCreateView(APIView):
 #     permission_classes = [IsAuthenticated]

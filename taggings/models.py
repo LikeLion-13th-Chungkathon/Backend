@@ -1,8 +1,8 @@
 from django.db import models
 from accounts.models import User
 from memos.models import Memo
-from portfolios.models import TagStyle
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 
 class BaseModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True) # 객체를 생성할 때 날짜와 시간 저장
@@ -10,6 +10,23 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
+
+# RGB 검증
+HEX_COLOR_VALIDATOR = RegexValidator(
+    regex=r"^#[0-9a-fA-F]{6}$",
+    message="올바른 HEX 색상 코드를 입력하세요 (예: #AABBCC)",
+)
+
+class TagStyle(models.Model):
+    id = models.AutoField(primary_key=True)
+    tag_detail = models.CharField(max_length=20, unique=True)
+    tag_color = models.CharField(max_length=7, unique=True, validators=[HEX_COLOR_VALIDATOR])
+
+    # class Meta:
+    #     constraints = [
+    #         models.UniqueConstraint(fields=["project", "tag_detail"], name="unique_tag_detail_per_project"),
+    #         models.UniqueConstraint(fields=["project", "tag_color"], name="unique_tag_color_per_project"),
+    #     ]
 
 class Tagging(BaseModel):
     id = models.AutoField(primary_key=True)

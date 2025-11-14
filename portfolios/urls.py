@@ -9,6 +9,5 @@ urlpatterns = [
 
     path('invite/', InviteCodeView.as_view(), name='invite_code'),
     
-    path('tagstyle/', TagStyleView.as_view(), name='tag_style'),
     # path('<int:pk>/tagstyle/<int:tagstyle_id>/', TagStyleDeleteView.as_view(), name='tag_style-delete')
 ]
