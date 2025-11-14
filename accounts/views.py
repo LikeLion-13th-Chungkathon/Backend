@@ -5,6 +5,7 @@ from .serializers import *
 from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from rest_framework.decorators import api_view
 
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import logout
@@ -19,6 +20,8 @@ import json
 # -- JWT 기반 회원가입 뷰 --
 class RegisterView(APIView):
     @swagger_auto_schema(
+        operation_summary= "JWT 기반 회원가입 (지금 프로젝트에선 사용 안 함)",
+        operation_description= "Oauth를 사용하고 있기에 지금은 사용하지 않음. 사용할 것을 대비하여 남겨둠.",
         request_body=RegisterSerializer,
         responses={201: "register success"}
     )
@@ -52,6 +55,8 @@ class RegisterView(APIView):
 
 class AuthView(APIView):
     @swagger_auto_schema(
+        operation_summary= "JWT 기반 로그인 (지금 프로젝트에선 사용 안 함)",
+        operation_description= "Oauth를 사용하고 있기에 지금은 사용하지 않음. 사용할 것을 대비하여 남겨둠.",
         request_body=AuthSerializer,
         responses={200: "login success"}
     )
@@ -112,6 +117,110 @@ GOOGLE_SCOPE = get_secret("GOOGLE_SCOPE_USERINFO")
 # def google_login(request):
 #     return redirect(f"{GOOGLE_REDIRECT}?client_id={GOOGLE_CLIENT_ID}&response_type=code&redirect_uri={GOOGLE_CALLBACK_URI}&scope={GOOGLE_SCOPE}")
 
+
+@swagger_auto_schema(
+    method="post",
+    operation_summary="구글 소셜 로그인 콜백",
+    operation_description=(
+        "프론트엔드에서 전달한 Google OAuth 인가코드(code)를 사용해 "
+        "구글 access token 및 사용자 정보를 받아온 뒤,\n"
+        "이미 가입된 유저면 바로 로그인 처리, 비회원이면 닉네임 입력을 요청하는 API입니다.\n\n"
+        "요청 예시:\n"
+        "{\n"
+        '  "code": "4/0AfJohX..."\n'
+        "}\n\n"
+        "응답 분기:\n"
+        "- 200 OK: 기존 회원 → 토큰 발급 및 로그인 완료\n"
+        "- 202 Accepted: 신규 회원 → 닉네임 입력 필요 (signup API 호출해야 함)"
+    ),
+    tags=["Oauth"],
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        required=["code"],
+        properties={
+            "code": openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description="Google OAuth 인가코드",
+                example="4/0AfJohXabcdEFG...",
+            ),
+        },
+    ),
+    responses={
+        200: openapi.Response(
+            description="기존 회원, 로그인 성공",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "user": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            "id": openapi.Schema(
+                                type=openapi.TYPE_INTEGER,
+                                example=1,
+                            ),
+                            "username": openapi.Schema(
+                                type=openapi.TYPE_STRING,
+                                example="myNickname",
+                            ),
+                            "email": openapi.Schema(
+                                type=openapi.TYPE_STRING,
+                                example="user@gmail.com",
+                            ),
+                            "nickname": openapi.Schema(
+                                type=openapi.TYPE_STRING,
+                                example="myNickname",
+                            ),
+                        },
+                    ),
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="google social login success!",
+                    ),
+                    "token": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            "access_token": openapi.Schema(
+                                type=openapi.TYPE_STRING
+                            ),
+                            "refresh_token": openapi.Schema(
+                                type=openapi.TYPE_STRING
+                            ),
+                        },
+                    ),
+                },
+            ),
+        ),
+        202: openapi.Response(
+            description="신규 회원, 닉네임 입력 필요",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="new_user_nickname_required",
+                    ),
+                    "email": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="user@gmail.com",
+                    ),
+                    "username_from_google": openapi.Schema(
+                        type=openapi.TYPE_STRING,
+                        example="John Doe",
+                        description="구글에서 넘어온 name 값",
+                    ),
+                },
+            ),
+        ),
+        400: openapi.Response(
+            description="code 누락 또는 Google/Token 오류",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                example={"error": "Authorization code error."},
+            ),
+        ),
+    },
+)
+@api_view(["POST"])
 def google_callback(request):
     
     
@@ -200,6 +309,97 @@ class GoogleSignupView(APIView):
     프론트엔드에서 닉네임까지 모두 받아 실제 회원가입을 처리합니다.
     (POST: /accounts/google/signup/ 등)
     """
+    @swagger_auto_schema(
+        operation_summary="구글 소셜 회원가입 완료 (닉네임 설정)",
+        operation_description=(
+            "비회원인 경우 callback 이후 조건부로 접근하는 엔드포인트입니다.\n\n"
+            "프론트엔드에서 전달받은 구글 이메일과 닉네임을 이용해 "
+            "User를 생성하고 JWT 토큰(access/refresh)을 발급합니다.\n\n"
+            "요청 예시:\n"
+            "{\n"
+            '   "email": "google_email@gmail.com",\n'
+            '   "username_from_google": "raw google username",\n'
+            '   "nickname": "사용자가 선택한 닉네임"\n'
+            "}"
+        ),
+        tags=["Oauth"],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=["email", "nickname"],
+            properties={
+                "email": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    example="google_email@gmail.com",
+                ),
+                "username_from_google": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    example="John Doe",
+                    description="구글 프로필에서 받아온 name 값. 서버는 닉네임으로 사용하지 않음.",
+                ),
+                "nickname": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    example="myCustomNickname",
+                    description="사용자가 실제로 사용할 닉네임",
+                ),
+            },
+        ),
+        responses={
+            201: openapi.Response(
+                description="google social signup success!",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "user": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "id": openapi.Schema(
+                                    type=openapi.TYPE_INTEGER,
+                                    example=1,
+                                ),
+                                "username": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="myCustomNickname",
+                                    description="닉네임(=username)",
+                                ),
+                                "email": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="google_email@gmail.com",
+                                ),
+                                "nickname": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="myCustomNickname",
+                                ),
+                            },
+                        ),
+                        "message": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="google social signup success!",
+                        ),
+                        "token": openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                "access_token": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                                ),
+                                "refresh_token": openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...(refresh)",
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            ),
+            400: openapi.Response(
+                description="잘못된 요청 또는 Validation Error",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    example={"error": "invalid data"},
+                ),
+            ),
+        },
+    )
     def post(self, request):
         # 프론트엔드는 202 응답을 받고, 사용자가 닉네임을 입력하면
         # { email, username_from_google, nickname }을 이 API로 전송합니다.
