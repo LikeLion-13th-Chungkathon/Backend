@@ -85,11 +85,11 @@ class ProjectCreateView(APIView):
             )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
-    # 모든 프로젝트 리스트 조회
+    # 로그인한 사용자의 모든 프로젝트 리스트 조회
     @swagger_auto_schema(
         responses={
             200: openapi.Response(
-                description="프로젝트 리스트 조회 성공",
+                description="로그인한 사용자의 프로젝트 리스트 조회 성공",
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
@@ -103,7 +103,12 @@ class ProjectCreateView(APIView):
         }
     )
     def get(self, request):
-        projects = Project.objects.all().order_by("-created_at")
+        user = request.user
+        
+        projects = Project.objects.filter(
+            teammember__user=user
+        ).distinct().order_by("-created_at")
+
         serializer = ProjectSerializer(projects, many=True, context={"request": request})
         return Response({"results": serializer.data}, status=status.HTTP_200_OK)
     
