@@ -10,5 +10,5 @@ class TaggingSerializer(serializers.ModelSerializer):
 class TagStyleSerializer(serializers.ModelSerializer):
     class Meta:
         model = TagStyle
-        fields = ["id", "project", "tag_detail", "tag_color"]
-        read_only_fields = ["id", "project"]
+        fields = ["id", "tag_detail", "tag_color"]
+        read_only_fields = ["id"]
