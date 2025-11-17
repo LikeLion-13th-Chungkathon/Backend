@@ -200,6 +200,12 @@ class GoogleSignupSerializer(serializers.ModelSerializer):
             "access_token": access_token,
             "refresh_token": refresh_token,
         }
+    
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "nickname", "created_at"]
+
 class TeamMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeamMember

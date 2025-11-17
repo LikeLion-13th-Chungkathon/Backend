@@ -16,6 +16,7 @@ urlpatterns = [
     path("google/callback/", google_callback, name="google_callback"),
     path('google/signup/', GoogleSignupView.as_view(), name='google_signup'),
 
+    path("my/", UserView.as_view()),
     # path("team/members/", TeamMemberCreateView.as_view()),
     path("team/members/list/", TeamMemberListView.as_view()),
 
