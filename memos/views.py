@@ -129,7 +129,7 @@ class UserMemoListView(APIView):
         if date:
             try:
                 date = datetime.strptime(date, "%Y-%m-%d").date()
-                memos = memos.filter(created_at__date=date)
+                memos = memos.filter(date=date)
             except ValueError:
                 return Response({"error": "Invalid date format (YYYY-MM-DD expected)"}, status=status.HTTP_400_BAD_REQUEST)
 
