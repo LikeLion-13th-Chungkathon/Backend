@@ -73,14 +73,14 @@ class ProjectHouseSerializer(serializers.ModelSerializer):
         return obj.progress_percent
     
 class ContributionSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source="user.username", read_only=True)
+    nickname = serializers.CharField(source="user.nickname", read_only=True)
     total_logs = serializers.SerializerMethodField()
     max_possible_logs = serializers.SerializerMethodField()
     contribution_percent = serializers.SerializerMethodField()
 
     class Meta:
         model = TeamMember
-        fields = ["username", "role", "total_logs", "max_possible_logs", "contribution_percent"]
+        fields = ["nickname", "role", "total_logs", "max_possible_logs", "contribution_percent"]
 
     def get_total_logs(self, obj):
         return Log.objects.filter(user=obj.user, project=obj.project).count()
