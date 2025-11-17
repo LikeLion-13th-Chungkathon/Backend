@@ -43,13 +43,19 @@ class ProjectCreateView(APIView):
                 schema=project_detail_schema
             ),
             400: openapi.Response(
-                description="잘못된 요청 - 날짜 오류 또는 인원수 제한",
+                description="잘못된 요청",
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        "error": openapi.Schema(type=openapi.TYPE_STRING, example="시작일은 종료일보다 이후일 수 없습니다.")
+                        "error": openapi.Schema(type=openapi.TYPE_STRING)
                     }
-                )
+                ),
+                examples={
+                    "application/json": {
+                        "invalid_date": {"error": "시작일은 종료일보다 이후일 수 없습니다."},
+                        "limit_project_name": {"error": "프로젝트 이름은 최대 10자까지 가능합니다."} 
+                    }
+                }
             )
         }
     )
