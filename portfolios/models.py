@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.db import IntegrityError
 from django.apps import apps
 import pytz
-from datetime import datetime, time
+from datetime import datetime, time, timezone as dt_timezone
 
 class Project(models.Model):
     project_name = models.CharField(max_length=10)
@@ -61,16 +61,18 @@ class Log(models.Model):
         valid_reasons = dict(cls.REASONS).keys()
         if reason not in valid_reasons:
             raise ValueError("잘못된 통나무 지급 사유입니다.")
-        
+
+        # 한국 시간 기준 하루 구간
         start_kr = kr_tz.localize(datetime.combine(today_kr, time.min))
         end_kr = kr_tz.localize(datetime.combine(today_kr, time.max))
-        
+
+        # created_at(UTC 저장)을 한국 시간 기준으로 비교하기 위해 UTC로 변환
         already_given = cls.objects.filter(
             user=user,
             project=project,
             reason=reason,
-            created_at__gte=start_kr.astimezone(timezone.utc),
-            created_at__lte=end_kr.astimezone(timezone.utc),
+            created_at__gte=start_kr.astimezone(dt_timezone.utc),
+            created_at__lte=end_kr.astimezone(dt_timezone.utc),
         ).exists()
 
         if already_given:
