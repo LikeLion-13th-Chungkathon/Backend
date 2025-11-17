@@ -3,6 +3,8 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import IntegrityError
 from django.apps import apps
+import pytz
+from datetime import datetime, time
 
 class Project(models.Model):
     project_name = models.CharField(max_length=10)
@@ -52,28 +54,32 @@ class Log(models.Model):
     # 하루 최대 2개 통나무 지급 함수
     @classmethod
     def give_log(cls, user, project, reason):
-        today = timezone.localdate()
-        valid_reasons = dict(cls.REASONS).keys()
+        kr_tz = pytz.timezone("Asia/Seoul")
+        now_kr = timezone.now().astimezone(kr_tz)
+        today_kr = now_kr.date()
 
+        valid_reasons = dict(cls.REASONS).keys()
         if reason not in valid_reasons:
             raise ValueError("잘못된 통나무 지급 사유입니다.")
         
+        start_kr = kr_tz.localize(datetime.combine(today_kr, time.min))
+        end_kr = kr_tz.localize(datetime.combine(today_kr, time.max))
+        
         already_given = cls.objects.filter(
-        user=user,
-        project=project,
-        reason=reason,
-        created_at__date=today
+            user=user,
+            project=project,
+            reason=reason,
+            created_at__gte=start_kr.astimezone(timezone.utc),
+            created_at__lte=end_kr.astimezone(timezone.utc),
         ).exists()
 
-        if (reason in ["DAILY_COMPLETE", "TAG_REVIEW_COMPLETE"]) and already_given:
+        if already_given:
             return {"success": False, "message": f"이미 오늘 {reason} 보상을 받았습니다."}
-        
-        log_date = log_date or today
 
         log = cls.objects.create(
             user=user,
             project=project,
-            date=log_date,
+            date=today_kr,
             reason=reason
         )
 
