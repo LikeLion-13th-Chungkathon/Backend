@@ -458,6 +458,26 @@ class GoogleSignupView(APIView):
         
 #         return Response(TeamMemberSerializer(team_member).data, status=status.HTTP_201_CREATED)
 
+class UserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="내 정보 조회",
+        operation_description="현재 로그인된 사용자의 정보를 반환합니다.",
+        responses={
+            200: openapi.Response(
+                description="성공적으로 사용자 정보를 반환",
+                schema=UserSerializer()
+            ),
+            401: "인증 실패(로그인 필요)"
+        }
+    )
+    def get(self, request):
+        user = request.user
+        serializer = UserSerializer(user)
+        return Response({"results": serializer.data}, status=status.HTTP_200_OK)
+
+
 class TeamMemberListView(APIView):
     permission_classes = [IsAuthenticated]
    
