@@ -460,7 +460,7 @@ class GoogleSignupView(APIView):
 
 class TeamMemberListView(APIView):
     permission_classes = [IsAuthenticated]
-
+   
     @swagger_auto_schema(
         manual_parameters=[
             openapi.Parameter(
@@ -475,7 +475,41 @@ class TeamMemberListView(APIView):
                 description="역할(Member, Admin)",
                 type=openapi.TYPE_STRING,
             )
-        ]
+        ],
+        responses={
+            200: openapi.Response(
+                description="팀 멤버 리스트 조회 성공",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "results": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(
+                                type=openapi.TYPE_OBJECT,
+                                properties={
+                                    "user": openapi.Schema(
+                                        type=openapi.TYPE_INTEGER,
+                                        example=3
+                                    ),
+                                    "project": openapi.Schema(
+                                        type=openapi.TYPE_INTEGER,
+                                        example=12
+                                    ),
+                                    "role": openapi.Schema(
+                                        type=openapi.TYPE_STRING,
+                                        example="Member"
+                                    ),
+                                    "joined_at": openapi.Schema(
+                                        type=openapi.TYPE_STRING,
+                                        example="2025-11-14T23:50:00.123456+09:00"
+                                    )
+                                }
+                            )
+                        )
+                    }
+                )
+            )
+        }
     )
     def get(self, request):
         team_members = TeamMember.objects.all()
