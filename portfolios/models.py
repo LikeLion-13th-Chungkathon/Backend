@@ -5,7 +5,7 @@ from django.db import IntegrityError
 from django.apps import apps
 
 class Project(models.Model):
-    project_name = models.CharField(max_length=100)
+    project_name = models.CharField(max_length=10)
     date_start = models.DateField()
     date_end = models.DateField()
     owner = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
@@ -19,6 +19,10 @@ class Project(models.Model):
         # start가 end보다 뒤라면 ValidationError 발생
         if self.date_start and self.date_end and self.date_start > self.date_end:
             raise ValidationError("시작일은 종료일보다 이후일 수 없습니다.")
+        
+        # 프로젝트 이름 길이 제한
+        if self.project_name and len(self.project_name) > 10:
+            raise ValidationError("프로젝트 이름은 최대 10자까지 가능합니다.")
     
     def save(self, *args, **kwargs):
         # full_clean()으로 clean() 포함 모든 validator 실행
@@ -41,7 +45,9 @@ class Log(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ("user", "project", "date", "reason")
+        indexes = [
+            models.Index(fields=["user", "project", "reason", "created_at"])
+        ]
 
     # 하루 최대 2개 통나무 지급 함수
     @classmethod
@@ -51,18 +57,31 @@ class Log(models.Model):
 
         if reason not in valid_reasons:
             raise ValueError("잘못된 통나무 지급 사유입니다.")
+        
+        already_given = cls.objects.filter(
+        user=user,
+        project=project,
+        reason=reason,
+        created_at__date=today
+        ).exists()
 
-        try:
-            cls.objects.create(user=user, project=project, date=today, reason=reason)
-
-            # ProjectHouse 진행률 자동 업데이트
-            house = ProjectHouse.objects.get(project=project)
-            house.update_progress()
-
-            return {"success": True, "message": f"통나무 지급 성공 ({reason})"}
-
-        except IntegrityError:
+        if (reason in ["DAILY_COMPLETE", "TAG_REVIEW_COMPLETE"]) and already_given:
             return {"success": False, "message": f"이미 오늘 {reason} 보상을 받았습니다."}
+        
+        log_date = log_date or today
+
+        log = cls.objects.create(
+            user=user,
+            project=project,
+            date=log_date,
+            reason=reason
+        )
+
+        house = ProjectHouse.objects.get(project=project)
+        house.update_progress()
+
+        return {"success": True, "message": f"통나무 지급 성공 ({reason})"}
+
 
 class ProjectHouse(models.Model):
     project = models.OneToOneField(Project, on_delete=models.CASCADE)
