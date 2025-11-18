@@ -162,6 +162,66 @@ class MemoTaggingView(APIView):
         taggings = Tagging.objects.filter(memo=memo).order_by("-created_at")
         serializer = TaggingSerializer(taggings, many=True, context={"request": request})
         return Response({"results": serializer.data}, status=status.HTTP_200_OK)
+    
+    @swagger_auto_schema(
+        operation_summary="메모의 모든 태깅 삭제",
+        operation_description="""
+    해당 메모에 달린 모든 태깅(Tagging)을 삭제합니다.  
+    - 로그인한 사용자 본인의 메모만 삭제할 수 있습니다.
+    - 삭제 후에는 204 No Content 를 반환합니다.
+        """,
+        responses={
+            204: openapi.Response(
+                description="모든 태깅 삭제 성공",
+                examples={
+                    "application/json": {
+                        "message": "메모의 모든 태깅이 삭제되었습니다."
+                    }
+                }
+            ),
+            403: openapi.Response(
+                description="메모 주인이 아닌 경우",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                ),
+                examples={
+                    "application/json": {
+                        "detail": "Permission denied"
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="메모를 찾을 수 없음",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                ),
+                examples={
+                    "application/json": {
+                        "detail": "Not found."
+                    }
+                }
+            ),
+        }
+    )
+    def delete(self, request, memo_id):
+        memo = get_object_or_404(Memo, id=memo_id)
+
+        if request.user != memo.user:
+            return Response({"detail": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+
+        Tagging.objects.filter(memo=memo).delete()
+
+        return Response(
+            {"message": "해당 메모의 모든 태깅이 삭제되었습니다."},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
 
 tag_style_schema = openapi.Schema(
     type=openapi.TYPE_OBJECT,
