@@ -33,7 +33,7 @@ class Tagging(BaseModel):
     tag_style = models.ForeignKey(TagStyle, on_delete=models.CASCADE, related_name="taggings")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="taggings")
     memo = models.ForeignKey(Memo, on_delete=models.CASCADE, related_name="taggings")
-    tag_contents = models.CharField(max_length=20)
+    tag_contents = models.CharField(max_length=500)
     offset_start = models.PositiveIntegerField(default=0)
     offset_end = models.PositiveIntegerField(default=0)
 
